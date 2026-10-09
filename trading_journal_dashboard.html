@@ -1,0 +1,1309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProTrade Journal & Dashboard</title>
+    <script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg-primary: #0a0e1a;
+            --bg-secondary: #111827;
+            --bg-card: #1f2937;
+            --accent: #3b82f6;
+            --accent-glow: rgba(59, 130, 246, 0.3);
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --text-primary: #f9fafb;
+            --text-secondary: #9ca3af;
+            --border: #374151;
+        }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Animated Background */
+        .bg-animation {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(59, 130, 246, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(16, 185, 129, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 40% 20%, rgba(239, 68, 68, 0.1) 0%, transparent 50%);
+            animation: bgPulse 10s ease-in-out infinite;
+        }
+        @keyframes bgPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        /* Header */
+        .header {
+            background: rgba(17, 24, 39, 0.8);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent), var(--success));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .nav-tabs {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .nav-tab {
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 1px solid transparent;
+        }
+        .nav-tab:hover, .nav-tab.active {
+            background: var(--bg-card);
+            border-color: var(--accent);
+        }
+        .user-section {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .broker-badge {
+            background: var(--bg-card);
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.875rem;
+            border: 1px solid var(--border);
+        }
+
+        /* Main Layout */
+        .container {
+            display: grid;
+            grid-template-columns: 300px 1fr 350px;
+            gap: 1.5rem;
+            padding: 1.5rem;
+            max-width: 1920px;
+            margin: 0 auto;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 20px var(--accent-glow);
+        }
+        .card-title {
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .stat-item {
+            background: var(--bg-secondary);
+            padding: 1rem;
+            border-radius: 0.75rem;
+            border: 1px solid var(--border);
+        }
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.25rem;
+        }
+        .stat-value {
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+        .stat-value.positive { color: var(--success); }
+        .stat-value.negative { color: var(--danger); }
+
+        /* Form Elements */
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        .form-label {
+            display: block;
+            font-size: 0.875rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-secondary);
+        }
+        .form-input, .form-select {
+            width: 100%;
+            padding: 0.75rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            transition: border-color 0.3s;
+        }
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.875rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent), #2563eb);
+            color: white;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px var(--accent-glow);
+        }
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+        }
+        .btn-outline:hover {
+            border-color: var(--accent);
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        /* Chart Container */
+        .chart-container {
+            height: 400px;
+            background: var(--bg-secondary);
+            border-radius: 0.75rem;
+            overflow: hidden;
+            position: relative;
+        }
+        #tradingview-chart {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Trade List */
+        .trade-list {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        .trade-item {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 0.75rem;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        .trade-item:hover {
+            border-color: var(--accent);
+            transform: translateX(4px);
+        }
+        .trade-item::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: var(--accent);
+        }
+        .trade-item.win::before { background: var(--success); }
+        .trade-item.loss::before { background: var(--danger); }
+        .trade-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        .trade-pair {
+            font-weight: 700;
+            font-size: 1rem;
+        }
+        .trade-pnl {
+            font-weight: 700;
+            font-size: 1.125rem;
+        }
+        .trade-pnl.positive { color: var(--success); }
+        .trade-pnl.negative { color: var(--danger); }
+        .trade-details {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+        .trade-tag {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            background: rgba(59, 130, 246, 0.2);
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            margin-top: 0.5rem;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(5px);
+        }
+        .modal.active {
+            display: flex;
+            animation: fadeIn 0.3s;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .modal-content {
+            background: var(--bg-card);
+            border-radius: 1rem;
+            padding: 2rem;
+            width: 90%;
+            max-width: 500px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            animation: slideUp 0.3s;
+        }
+        @keyframes slideUp {
+            from { transform: translateY(50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+        .close-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+        .close-btn:hover {
+            color: var(--text-primary);
+        }
+
+        /* Webhook Section */
+        .webhook-status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: var(--bg-secondary);
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .webhook-url {
+            font-family: monospace;
+            font-size: 0.75rem;
+            background: var(--bg-primary);
+            padding: 0.5rem;
+            border-radius: 0.25rem;
+            word-break: break-all;
+            border: 1px solid var(--border);
+        }
+
+        /* Account Selector */
+        .account-tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            overflow-x: auto;
+        }
+        .account-tab {
+            padding: 0.5rem 1rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.3s;
+            font-size: 0.875rem;
+        }
+        .account-tab:hover, .account-tab.active {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+        .account-tab.synthetic {
+            border-color: var(--warning);
+            color: var(--warning);
+        }
+        .account-tab.synthetic.active {
+            background: var(--warning);
+            color: var(--bg-primary);
+        }
+
+        /* Responsive */
+        @media (max-width: 1400px) {
+            .container {
+                grid-template-columns: 250px 1fr 300px;
+            }
+        }
+        @media (max-width: 1024px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+            .sidebar { order: 2; }
+            .main-content { order: 1; }
+            .right-panel { order: 3; }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--accent);
+        }
+
+        /* Toggle Switch */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--border);
+            transition: .4s;
+            border-radius: 24px;
+        }
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .toggle-slider {
+            background-color: var(--accent);
+        }
+        input:checked + .toggle-slider:before {
+            transform: translateX(26px);
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-animation"></div>
+
+    <header class="header">
+        <div class="logo">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+            </svg>
+            ProTrade Journal
+        </div>
+        <nav class="nav-tabs">
+            <div class="nav-tab active" onclick="switchTab('dashboard')">Dashboard</div>
+            <div class="nav-tab" onclick="switchTab('journal')">Journal</div>
+            <div class="nav-tab" onclick="switchTab('analytics')">Analytics</div>
+            <div class="nav-tab" onclick="switchTab('settings')">Settings</div>
+        </nav>
+        <div class="user-section">
+            <span class="broker-badge" id="currentBroker">Paper Trading</span>
+            <button class="btn btn-outline" onclick="openBrokerModal()">Connect Broker</button>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Left Sidebar -->
+        <aside class="sidebar">
+            <div class="card">
+                <div class="card-title">Account Overview</div>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-label">Balance</div>
+                        <div class="stat-value" id="accountBalance">$10,000.00</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Equity</div>
+                        <div class="stat-value" id="accountEquity">$10,245.50</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Open P/L</div>
+                        <div class="stat-value positive" id="openPL">+$245.50</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Margin Used</div>
+                        <div class="stat-value" id="marginUsed">12.5%</div>
+                    </div>
+                </div>
+
+                <div class="card-title">Today's Performance</div>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-label">Trades</div>
+                        <div class="stat-value" id="todayTrades">5</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Win Rate</div>
+                        <div class="stat-value positive" id="winRate">60%</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Profit Factor</div>
+                        <div class="stat-value positive" id="profitFactor">1.8</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Avg Trade</div>
+                        <div class="stat-value positive" id="avgTrade">+$49.10</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">
+                    Webhook Integration
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="webhookToggle" checked onchange="toggleWebhook()">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <div class="webhook-status">
+                    <div class="status-dot" id="webhookStatus"></div>
+                    <span id="webhookText">Active</span>
+                </div>
+                <div class="form-label">Endpoint URL</div>
+                <div class="webhook-url" id="webhookUrl">https://api.protrade.io/webhook/xt9m2k...</div>
+                <button class="btn btn-outline" style="width: 100%; margin-top: 0.75rem;" onclick="copyWebhook()">Copy URL</button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="card">
+                <div class="card-title">
+                    <span>Live Chart</span>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <select class="form-select" id="chartSymbol" onchange="updateChart()" style="width: auto;">
+                            <option value="EURUSD">EUR/USD</option>
+                            <option value="GBPUSD">GBP/USD</option>
+                            <option value="USDJPY">USD/JPY</option>
+                            <option value="XAUUSD">XAU/USD</option>
+                            <option value="US30">US30</option>
+                            <option value="BTCUSD">BTC/USD</option>
+                            <option value="volatility10">Volatility 10 Index</option>
+                            <option value="volatility25">Volatility 25 Index</option>
+                            <option value="volatility50">Volatility 50 Index</option>
+                            <option value="volatility75">Volatility 75 Index</option>
+                            <option value="volatility100">Volatility 100 Index</option>
+                            <option value="jump10">Jump 10 Index</option>
+                            <option value="jump25">Jump 25 Index</option>
+                            <option value="jump50">Jump 50 Index</option>
+                            <option value="boom1000">Boom 1000 Index</option>
+                            <option value="crash1000">Crash 1000 Index</option>
+                        </select>
+                        <select class="form-select" id="chartInterval" onchange="updateChart()" style="width: auto;">
+                            <option value="1">1m</option>
+                            <option value="5">5m</option>
+                            <option value="15" selected>15m</option>
+                            <option value="30">30m</option>
+                            <option value="60">1h</option>
+                            <option value="240">4h</option>
+                            <option value="D">1d</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <div id="tradingview-chart"></div>
+                </div>
+            </div>
+
+            <div class="card" style="margin-top: 1.5rem;">
+                <div class="card-title">Performance Analytics</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                    <div>
+                        <canvas id="equityChart"></canvas>
+                    </div>
+                    <div>
+                        <canvas id="winLossChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Right Panel -->
+        <aside class="right-panel">
+            <div class="card">
+                <div class="card-title">New Trade</div>
+
+                <div class="account-tabs">
+                    <div class="account-tab active" onclick="selectAccountType(this, 'forex')">Forex</div>
+                    <div class="account-tab synthetic" onclick="selectAccountType(this, 'synthetic')">Synthetic</div>
+                    <div class="account-tab" onclick="selectAccountType(this, 'options')">Options</div>
+                </div>
+
+                <form id="tradeForm" onsubmit="addTrade(event)">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Symbol</label>
+                            <select class="form-select" id="tradeSymbol" required>
+                                <option value="EURUSD">EUR/USD</option>
+                                <option value="GBPUSD">GBP/USD</option>
+                                <option value="USDJPY">USD/JPY</option>
+                                <option value="XAUUSD">Gold</option>
+                                <option value="US30">US30</option>
+                                <option value="BTCUSD">Bitcoin</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Type</label>
+                            <select class="form-select" id="tradeType" required>
+                                <option value="buy">Buy</option>
+                                <option value="sell">Sell</option>
+                                <option value="call">Call Option</option>
+                                <option value="put">Put Option</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Entry Price</label>
+                            <input type="number" class="form-input" id="entryPrice" step="0.00001" required placeholder="1.08500">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Lot Size</label>
+                            <select class="form-select" id="lotSize" required>
+                                <option value="0.01">0.01 (Micro)</option>
+                                <option value="0.1">0.1 (Mini)</option>
+                                <option value="0.5">0.5</option>
+                                <option value="1.0" selected>1.0 (Standard)</option>
+                                <option value="2.0">2.0</option>
+                                <option value="5.0">5.0</option>
+                                <option value="10.0">10.0</option>
+                                <option value="custom">Custom</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Stop Loss</label>
+                            <input type="number" class="form-input" id="stopLoss" step="0.00001" placeholder="1.08000">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Take Profit</label>
+                            <input type="number" class="form-input" id="takeProfit" step="0.00001" placeholder="1.09000">
+                        </div>
+                    </div>
+
+                    <div class="form-row" id="tpLevelsRow">
+                        <div class="form-group">
+                            <label class="form-label">TP1</label>
+                            <input type="number" class="form-input" id="tp1" step="0.00001" placeholder="1.08800">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">TP2</label>
+                            <input type="number" class="form-input" id="tp2" step="0.00001" placeholder="1.09200">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Strategy/Setup</label>
+                        <select class="form-select" id="strategy">
+                            <option value="">Select Strategy...</option>
+                            <option value="breakout">Breakout</option>
+                            <option value="support">Support/Resistance</option>
+                            <option value="trend">Trend Following</option>
+                            <option value="reversal">Reversal</option>
+                            <option value="scalping">Scalping</option>
+                            <option value="swing">Swing Trading</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Notes</label>
+                        <textarea class="form-input" id="tradeNotes" rows="3" placeholder="Trade rationale, emotions, market conditions..."></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">
+                        Add Trade
+                    </button>
+                </form>
+            </div>
+
+            <div class="card" style="margin-top: 1.5rem;">
+                <div class="card-title">Recent Trades</div>
+                <div class="trade-list" id="tradeList">
+                    <!-- Trades will be populated here -->
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Broker Connection Modal -->
+    <div class="modal" id="brokerModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Connect Broker</div>
+                <button class="close-btn" onclick="closeBrokerModal()">&times;</button>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Select Broker</label>
+                <select class="form-select" id="brokerSelect" onchange="updateBrokerFields()">
+                    <option value="">Select a broker...</option>
+                    <option value="oanda">OANDA</option>
+                    <option value="forexcom">Forex.com</option>
+                    <option value="ig">IG Markets</option>
+                    <option value="pepperstone">Pepperstone</option>
+                    <option value="icmarkets">IC Markets</option>
+                    <option value="deriv">Deriv</option>
+                    <option value="xm">XM</option>
+                    <option value="exness">Exness</option>
+                    <option value="ftmo">FTMO</option>
+                    <option value="myforexfunds">My Forex Funds</option>
+                    <option value="alpaca">Alpaca</option>
+                    <option value="interactive">Interactive Brokers</option>
+                    <option value="td">TD Ameritrade</option>
+                    <option value="webull">Webull</option>
+                    <option value="paper">Paper Trading (Demo)</option>
+                </select>
+            </div>
+            <div id="brokerCredentials">
+                <div class="form-group">
+                    <label class="form-label">API Key / Account ID</label>
+                    <input type="text" class="form-input" id="apiKey" placeholder="Enter your API key">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Secret / Password</label>
+                    <input type="password" class="form-input" id="apiSecret" placeholder="Enter your secret key">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Account Type</label>
+                    <select class="form-select" id="accountType">
+                        <option value="demo">Demo / Practice</option>
+                        <option value="live">Live / Real</option>
+                    </select>
+                </div>
+            </div>
+            <div style="margin-top: 1.5rem; display: flex; gap: 0.75rem;">
+                <button class="btn btn-outline" style="flex: 1;" onclick="closeBrokerModal()">Cancel</button>
+                <button class="btn btn-primary" style="flex: 1;" onclick="connectBroker()">Connect</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global State
+        let trades = JSON.parse(localStorage.getItem('trades')) || [];
+        let currentAccount = 'forex';
+        let chart;
+        let candlestickSeries;
+        let equityChart;
+        let winLossChart;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            initChart();
+            renderTrades();
+            initAnalytics();
+            loadSampleData();
+        });
+
+        // Initialize Lightweight Charts
+        function initChart() {
+            const chartContainer = document.getElementById('tradingview-chart');
+            chart = LightweightCharts.createChart(chartContainer, {
+                layout: {
+                    background: { color: '#111827' },
+                    textColor: '#9ca3af',
+                },
+                grid: {
+                    vertLines: { color: '#374151' },
+                    horzLines: { color: '#374151' },
+                },
+                crosshair: {
+                    mode: LightweightCharts.CrosshairMode.Normal,
+                },
+                rightPriceScale: {
+                    borderColor: '#374151',
+                },
+                timeScale: {
+                    borderColor: '#374151',
+                },
+            });
+
+            candlestickSeries = chart.addCandlestickSeries({
+                upColor: '#10b981',
+                downColor: '#ef4444',
+                borderUpColor: '#10b981',
+                borderDownColor: '#ef4444',
+                wickUpColor: '#10b981',
+                wickDownColor: '#ef4444',
+            });
+
+            // Generate sample data
+            generateSampleData();
+
+            chart.timeScale().fitContent();
+
+            window.addEventListener('resize', () => {
+                chart.applyOptions({ width: chartContainer.clientWidth });
+            });
+        }
+
+        function generateSampleData() {
+            const data = [];
+            let time = new Date('2024-01-01').getTime() / 1000;
+            let price = 1.08500;
+
+            for (let i = 0; i < 500; i++) {
+                const change = (Math.random() - 0.5) * 0.002;
+                const open = price;
+                const close = price + change;
+                const high = Math.max(open, close) + Math.random() * 0.001;
+                const low = Math.min(open, close) - Math.random() * 0.001;
+
+                data.push({
+                    time: time,
+                    open: open,
+                    high: high,
+                    low: low,
+                    close: close
+                });
+
+                price = close;
+                time += 900; // 15 minutes
+            }
+
+            candlestickSeries.setData(data);
+        }
+
+        function updateChart() {
+            const symbol = document.getElementById('chartSymbol').value;
+            const interval = document.getElementById('chartInterval').value;
+
+            // In real implementation, this would fetch data from your broker or data provider
+            generateSampleData();
+
+            // Update trade form symbol to match chart
+            document.getElementById('tradeSymbol').value = symbol;
+        }
+
+        // Trade Management
+        function addTrade(event) {
+            event.preventDefault();
+
+            const trade = {
+                id: Date.now(),
+                symbol: document.getElementById('tradeSymbol').value,
+                type: document.getElementById('tradeType').value,
+                entryPrice: parseFloat(document.getElementById('entryPrice').value),
+                lotSize: document.getElementById('lotSize').value,
+                stopLoss: parseFloat(document.getElementById('stopLoss').value) || null,
+                takeProfit: parseFloat(document.getElementById('takeProfit').value) || null,
+                tp1: parseFloat(document.getElementById('tp1').value) || null,
+                tp2: parseFloat(document.getElementById('tp2').value) || null,
+                strategy: document.getElementById('strategy').value,
+                notes: document.getElementById('tradeNotes').value,
+                timestamp: new Date().toISOString(),
+                status: 'open',
+                pnl: null,
+                exitPrice: null,
+                accountType: currentAccount
+            };
+
+            trades.unshift(trade);
+            localStorage.setItem('trades', JSON.stringify(trades));
+
+            renderTrades();
+            updateStats();
+
+            // Reset form
+            document.getElementById('tradeForm').reset();
+
+            // Show notification
+            showNotification('Trade added successfully!', 'success');
+
+            // Send webhook if enabled
+            if (document.getElementById('webhookToggle').checked) {
+                sendWebhook(trade);
+            }
+        }
+
+        function renderTrades() {
+            const list = document.getElementById('tradeList');
+            list.innerHTML = '';
+
+            trades.slice(0, 10).forEach(trade => {
+                const item = document.createElement('div');
+                item.className = `trade-item ${trade.pnl > 0 ? 'win' : trade.pnl < 0 ? 'loss' : ''}`;
+
+                const pnlDisplay = trade.pnl !== null 
+                    ? `<span class="trade-pnl ${trade.pnl >= 0 ? 'positive' : 'negative'}">${trade.pnl >= 0 ? '+' : ''}$${trade.pnl.toFixed(2)}</span>`
+                    : '<span class="trade-pnl">Open</span>';
+
+                const tpBadge = trade.takeProfit ? `<span class="trade-tag">TP: ${trade.takeProfit}</span>` : '';
+                const slBadge = trade.stopLoss ? `<span class="trade-tag">SL: ${trade.stopLoss}</span>` : '';
+
+                item.innerHTML = `
+                    <div class="trade-header">
+                        <span class="trade-pair">${trade.symbol} <small style="color: var(--text-secondary)">${trade.type.toUpperCase()}</small></span>
+                        ${pnlDisplay}
+                    </div>
+                    <div class="trade-details">
+                        <span>@ ${trade.entryPrice}</span>
+                        <span>${trade.lotSize} lot</span>
+                        <span>${new Date(trade.timestamp).toLocaleDateString()}</span>
+                    </div>
+                    ${tpBadge} ${slBadge}
+                    ${trade.strategy ? `<span class="trade-tag">${trade.strategy}</span>` : ''}
+                `;
+
+                item.onclick = () => showTradeDetails(trade);
+                list.appendChild(item);
+            });
+        }
+
+        function showTradeDetails(trade) {
+            // Implementation for trade detail modal
+            console.log('Trade details:', trade);
+        }
+
+        function updateStats() {
+            const closedTrades = trades.filter(t => t.status === 'closed');
+            const winningTrades = closedTrades.filter(t => t.pnl > 0);
+            const totalPnl = closedTrades.reduce((sum, t) => sum + (t.pnl || 0), 0);
+
+            document.getElementById('todayTrades').textContent = trades.filter(t => {
+                const date = new Date(t.timestamp);
+                const today = new Date();
+                return date.toDateString() === today.toDateString();
+            }).length;
+
+            document.getElementById('winRate').textContent = closedTrades.length > 0 
+                ? Math.round((winningTrades.length / closedTrades.length) * 100) + '%'
+                : '0%';
+
+            document.getElementById('avgTrade').textContent = closedTrades.length > 0
+                ? '$' + (totalPnl / closedTrades.length).toFixed(2)
+                : '$0.00';
+
+            updateCharts();
+        }
+
+        // Analytics Charts
+        function initAnalytics() {
+            const equityCtx = document.getElementById('equityChart').getContext('2d');
+            equityChart = new Chart(equityCtx, {
+                type: 'line',
+                data: {
+                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+                    datasets: [{
+                        label: 'Equity Curve',
+                        data: [10000, 10150, 9980, 10245, 10500],
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            grid: { color: '#374151' },
+                            ticks: { color: '#9ca3af' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#9ca3af' }
+                        }
+                    }
+                }
+            });
+
+            const winLossCtx = document.getElementById('winLossChart').getContext('2d');
+            winLossChart = new Chart(winLossCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Wins', 'Losses'],
+                    datasets: [{
+                        data: [12, 8],
+                        backgroundColor: ['#10b981', '#ef4444'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: '#9ca3af' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateCharts() {
+            // Update charts with real data
+        }
+
+        // Account Type Selection
+        function selectAccountType(element, type) {
+            document.querySelectorAll('.account-tab').forEach(tab => tab.classList.remove('active'));
+            element.classList.add('active');
+            currentAccount = type;
+
+            // Update symbol options based on account type
+            const symbolSelect = document.getElementById('tradeSymbol');
+            const typeSelect = document.getElementById('tradeType');
+
+            if (type === 'synthetic') {
+                symbolSelect.innerHTML = `
+                    <option value="volatility10">Volatility 10 Index</option>
+                    <option value="volatility25">Volatility 25 Index</option>
+                    <option value="volatility50">Volatility 50 Index</option>
+                    <option value="volatility75">Volatility 75 Index</option>
+                    <option value="volatility100">Volatility 100 Index</option>
+                    <option value="jump10">Jump 10 Index</option>
+                    <option value="jump25">Jump 25 Index</option>
+                    <option value="jump50">Jump 50 Index</option>
+                    <option value="boom1000">Boom 1000 Index</option>
+                    <option value="crash1000">Crash 1000 Index</option>
+                `;
+                typeSelect.innerHTML = `
+                    <option value="buy">Buy</option>
+                    <option value="sell">Sell</option>
+                `;
+            } else if (type === 'options') {
+                symbolSelect.innerHTML = `
+                    <option value="EURUSD">EUR/USD</option>
+                    <option value="GBPUSD">GBP/USD</option>
+                    <option value="USDJPY">USD/JPY</option>
+                    <option value="XAUUSD">Gold</option>
+                    <option value="BTCUSD">Bitcoin</option>
+                    <option value="AAPL">Apple</option>
+                    <option value="GOOGL">Google</option>
+                    <option value="TSLA">Tesla</option>
+                `;
+                typeSelect.innerHTML = `
+                    <option value="call">Call Option</option>
+                    <option value="put">Put Option</option>
+                `;
+            } else {
+                symbolSelect.innerHTML = `
+                    <option value="EURUSD">EUR/USD</option>
+                    <option value="GBPUSD">GBP/USD</option>
+                    <option value="USDJPY">USD/JPY</option>
+                    <option value="XAUUSD">Gold</option>
+                    <option value="US30">US30</option>
+                    <option value="BTCUSD">Bitcoin</option>
+                `;
+                typeSelect.innerHTML = `
+                    <option value="buy">Buy</option>
+                    <option value="sell">Sell</option>
+                `;
+            }
+        }
+
+        // Webhook Functions
+        function toggleWebhook() {
+            const isActive = document.getElementById('webhookToggle').checked;
+            document.getElementById('webhookStatus').style.background = isActive ? 'var(--success)' : 'var(--danger)';
+            document.getElementById('webhookText').textContent = isActive ? 'Active' : 'Inactive';
+        }
+
+        function copyWebhook() {
+            const url = document.getElementById('webhookUrl').textContent;
+            navigator.clipboard.writeText(url);
+            showNotification('Webhook URL copied!', 'success');
+        }
+
+        function sendWebhook(trade) {
+            // In production, this would send to your webhook endpoint
+            console.log('Sending webhook:', trade);
+
+            // Example webhook payload structure
+            const payload = {
+                event: 'trade.created',
+                timestamp: new Date().toISOString(),
+                data: trade
+            };
+
+            // Simulate webhook call
+            fetch('https://httpbin.org/post', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            }).catch(err => console.log('Webhook demo (no actual endpoint configured)'));
+        }
+
+        // Broker Connection
+        function openBrokerModal() {
+            document.getElementById('brokerModal').classList.add('active');
+        }
+
+        function closeBrokerModal() {
+            document.getElementById('brokerModal').classList.remove('active');
+        }
+
+        function updateBrokerFields() {
+            const broker = document.getElementById('brokerSelect').value;
+            const credentialsDiv = document.getElementById('brokerCredentials');
+
+            if (broker === 'paper') {
+                credentialsDiv.style.display = 'none';
+            } else {
+                credentialsDiv.style.display = 'block';
+            }
+        }
+
+        function connectBroker() {
+            const broker = document.getElementById('brokerSelect').value;
+            const apiKey = document.getElementById('apiKey').value;
+            const accountType = document.getElementById('accountType').value;
+
+            if (!broker) {
+                showNotification('Please select a broker', 'error');
+                return;
+            }
+
+            if (broker !== 'paper' && !apiKey) {
+                showNotification('Please enter API credentials', 'error');
+                return;
+            }
+
+            // Simulate connection
+            document.getElementById('currentBroker').textContent = 
+                broker.charAt(0).toUpperCase() + broker.slice(1) + ' (' + accountType + ')';
+
+            closeBrokerModal();
+            showNotification('Connected to ' + broker + ' successfully!', 'success');
+
+            // In production, this would:
+            // 1. Authenticate with broker OAuth or API key
+            // 2. Fetch account balance and positions
+            // 3. Subscribe to real-time price feeds
+            // 4. Enable one-click trading
+        }
+
+        // Navigation
+        function switchTab(tab) {
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // In production, this would switch between different views
+            console.log('Switched to:', tab);
+        }
+
+        // Utilities
+        function showNotification(message, type) {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 80px;
+                right: 20px;
+                padding: 1rem 1.5rem;
+                background: ${type === 'success' ? 'var(--success)' : 'var(--danger)'};
+                color: white;
+                border-radius: 0.5rem;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                z-index: 10000;
+                animation: slideIn 0.3s ease;
+            `;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
+        function loadSampleData() {
+            if (trades.length === 0) {
+                trades = [
+                    {
+                        id: 1,
+                        symbol: 'EURUSD',
+                        type: 'buy',
+                        entryPrice: 1.08500,
+                        lotSize: '1.0',
+                        stopLoss: 1.08000,
+                        takeProfit: 1.09000,
+                        tp1: 1.08800,
+                        tp2: null,
+                        strategy: 'breakout',
+                        notes: 'Bullish breakout above resistance',
+                        timestamp: new Date(Date.now() - 86400000).toISOString(),
+                        status: 'closed',
+                        pnl: 125.50,
+                        exitPrice: 1.09050,
+                        accountType: 'forex'
+                    },
+                    {
+                        id: 2,
+                        symbol: 'XAUUSD',
+                        type: 'sell',
+                        entryPrice: 2035.50,
+                        lotSize: '0.5',
+                        stopLoss: 2045.00,
+                        takeProfit: 2020.00,
+                        tp1: 2030.00,
+                        tp2: 2025.00,
+                        strategy: 'reversal',
+                        notes: 'Overbought RSI on 4H',
+                        timestamp: new Date(Date.now() - 172800000).toISOString(),
+                        status: 'closed',
+                        pnl: -45.20,
+                        exitPrice: 2042.00,
+                        accountType: 'forex'
+                    },
+                    {
+                        id: 3,
+                        symbol: 'volatility75',
+                        type: 'buy',
+                        entryPrice: 650000,
+                        lotSize: '0.1',
+                        stopLoss: 640000,
+                        takeProfit: 670000,
+                        tp1: null,
+                        tp2: null,
+                        strategy: 'trend',
+                        notes: 'Following uptrend on synthetic',
+                        timestamp: new Date().toISOString(),
+                        status: 'open',
+                        pnl: null,
+                        exitPrice: null,
+                        accountType: 'synthetic'
+                    }
+                ];
+                localStorage.setItem('trades', JSON.stringify(trades));
+                renderTrades();
+                updateStats();
+            }
+        }
+
+        // Add CSS animations
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+            @keyframes slideOut {
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(100%); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>
